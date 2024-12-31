@@ -39,13 +39,13 @@ EGG3D generate animatable and editable 3D head with 3D-aware GANs and 3DGS.
 
 - **fitted condition params**
 
-    Down fitted condition params of FFHQ@512 from [here]() and put under `Data/fitted_dataset`.
+    Down fitted condition params of FFHQ@512 from [here](https://drive.google.com/file/d/1WKMRA-knjWexGiuNBQlFNrZfnXOO6q4d/view?usp=drive_link) and put under `Data/fitted_dataset`.
 
 ## Checkpoint
 
 |Training Dataset|Link|
 |:-:|:-:|
-|FFHQ@512|[google drive]()|
+|FFHQ@512|[google drive](https://drive.google.com/file/d/1J0ckbmvaDSgowD4Tq7uNmBZOW3fygMDz/view?usp=drive_link)|
 
 ## Inference
 
