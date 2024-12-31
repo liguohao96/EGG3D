@@ -1,0 +1,24 @@
+torch>=1.12.0
+torchvision
+numpy
+chumpy
+
+# image
+opencv-python   # cv2
+pillow          # PIL Image
+imageio
+pyspng
+
+# graphics
+plyfile
+kaolin
+3rdparty/nvdiffrast
+
+# misc
+tqdm
+natsort
+easydict
+pyyaml
+ninja
+lpips
+tensorboard
