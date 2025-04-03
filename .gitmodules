@@ -3,4 +3,4 @@
 	url = https://github.com/NVlabs/nvdiffrast.git
 [submodule "3rdparty/diff-gaussian-rasterization"]
 	path = 3rdparty/diff-gaussian-rasterization
-	url = https://github.com/liguohao96/EGG3D.git
+	url = https://github.com/liguohao96/diff-gaussian-rasterization.git
