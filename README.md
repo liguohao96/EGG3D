@@ -56,6 +56,14 @@ python scripts/application/noise_to_3d.py --checkpoint GAN_3dgs_512.zip
 ```
 It will save intermediate result and final mesh at `./temp/GAN_3dgs_512/noise_to_3d`
 
+## Train
+
+You could train EGG3D with
+```shell
+python train_egg3d.py -c configs/config_train.yaml  --batch_size 4
+torchrun ... train_egg3d.py -c configs/config_train.yaml  --batch_size 32 --enable_ddp True
+```
+
 ## Acknowledgments
 
 Our network codes are based on [EG3D](https://github.com/NVlabs/eg3d), thanks for their great works.

@@ -558,7 +558,23 @@ class EGHead(nn.Module):
 
                         # weight by area
                         gs_2d_area = random_weight_by_area(num_area_gs)
-                        gs_2d      = torch.cat([gs_2d_vfe, gs_2d_area], dim=0)
+                        gs_2d_base = torch.cat([gs_2d_vfe, gs_2d_area], dim=0)
+
+                    # # curvature
+                    # import trimesh
+                    # bump = torch.zeros(1, texture_res, texture_res, 1, device=device)
+                    # pos_2d, nrm_2d, bumped_pos_2d, bumped_nrm_2d = self.get_bump(ver, bump)[:4]
+                    # u2d  = F.pad(torch.diff(bumped_nrm_2d, dim=2), (0, 0, 1, 0), "constant", 0.0)
+                    # v2d  = F.pad(torch.diff(bumped_nrm_2d, dim=1), (0, 0, 0, 0, 1, 0), "constant", 0.0)
+                    # grad = (u2d.norm(dim=-1) + v2d.norm(dim=-1)).reshape(texture_res, texture_res).detach().cpu().numpy()
+                    # i0   = torch.multinomial(torch.as_tensor(grad).flatten(), int(0.125*RES*RES))
+
+                    # mesh = trimesh.Trimesh(ver.squeeze(0).detach().cpu().numpy(), self.tri.detach().cpu().numpy())
+                    # curv = trimesh.curvature.discrete_gaussian_curvature_measure(mesh, pos_2d.reshape(-1, 3).detach().cpu().numpy(), 0.005) # 10mm
+                    # curv = np.abs(curv.reshape(texture_res, texture_res))
+                    # i1   = torch.multinomial(torch.as_tensor(curv).flatten(), int(0.125*RES*RES))
+                    # gs_2d = torch.cat([gs_2d_base, uv_2d[i0], uv_2d[i1]], dim=0)
+                    gs_2d = gs_2d_base
 
                     # gs in 2D
                     faces_uv= uv[uv_tri.flatten().long(), :].reshape(-1, 3, 2).to(device)

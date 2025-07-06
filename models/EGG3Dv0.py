@@ -1496,6 +1496,7 @@ with nullcontext("D"):
             self.streams     = [] if using_streams else None
 
         # @torch_compile()
+        # def forward(self, img, condition, update_emas=False, **block_kwargs):
         def forward(self, img, seg, condition, update_emas=False, **block_kwargs):
             if self.training:
                 self.train_steps += 1

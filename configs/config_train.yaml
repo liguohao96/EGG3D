@@ -1,0 +1,261 @@
+name: GAN_3dgs_512-train
+data:
+  FFHQ:
+    type: datasets.ffhq_flame.FFHQFLAMEDataset
+    args: 
+      - final_crops
+      - lmkfit_dataset.pth
+    kwargs:
+      segment_root: segment_img
+      zip_file:     ./Data/FFHQ_ex3d_v4.zip
+      lazy_init:    True
+      down_scale:   1  # 128
+    # args: 
+    #   - Data/fitted_dataset/
+    #   - Data/fitted_dataset/lmkfit_dataset.pth
+    # kwargs:
+    #   down_scale: 1
+model:
+  # norm_i:
+  #   type: models.common.Normalize
+  #   kwargs:
+  #     mean: [0.5]
+  #     std:  [0.5]
+  #     shape: [1, 1, 1, 1]
+  # norm_o:
+  #   type: models.common.Normalize
+  #   kwargs:
+  #     mean: [0.0]
+  #     std:  [1.0]
+  #     shape: [1, 1, 1, 1]
+  G:
+    type: models.EGG3Dv0.EGG3DGAN
+    args: [512]
+    kwargs:
+      num_fp16_res: 0
+      # flame_offset: [0.0, 0.0, 0.05]
+      noise_config:
+        tex:  256
+        env:  128
+        hair: 128
+      condition_config:
+        m2v:   [4, 4]
+        ndc:   [4, 4]
+        pose:  6
+        eye_pose: 6
+        light: [9, 3]
+        shape: 100
+        exp:   50
+      disc_condition_config:
+        m2v:   [4, 4]
+        ndc:   [4, 4]
+        light: [9, 3]
+      tex_noise_config:
+        tex: 256
+      tex_condition_config:
+        light: [9, 3]
+        shape: 100
+        exp:   50
+      tri_noise_config:
+        tex:  256
+        hair: 128
+      tri_condition_config:
+        m2v:   [4, 4]
+        pose:  6
+        light: [9, 3]
+        shape: 100
+        exp:   50
+      bcg_noise_config:
+        env: 128
+      bcg_condition_config:
+        light: [9, 3]
+        shape: 100
+        exp:   50
+      cond_swap_init_prob:  0
+      cond_swap_decay:      1000
+      cond_swap_config:
+        tex:
+          light: 0.2
+          shape: 0.2
+          exp:   0.4
+        trif:
+          m2v:    0.2
+          pose:   0.2
+          light:  0.2
+        back:
+          m2v:   0
+          light: 0
+          shape: 0
+          exp:   0
+        hair:
+          shape: 0
+
+      mapping_kwargs:
+        num_layers: 2
+      field_config:
+        layout:    channel
+        box_warp:  0.5
+        aggregate: avg
+        plane_dim:          32
+        num_band:           0
+        decoder_hidden_dim: 64
+        decoder_num_layer:  2
+      img_resolution:     512
+      img_channels:       3
+      tex_resolution:     512
+      tex_sr_factor:      1
+      tri_resolution:     256
+      # G_back
+      back_up_factor:      2
+      back_channel_max:    512
+      back_sr_factor:      4
+      background_activation: "sigmoid"
+
+      head_gs_spp:         1.5
+      head_gs_init:        uniform
+      head_gs_normal:      matrix         # [simple, matrix]
+      head_gs_scale:       [0.0005, 0.0004]  # 4e-4
+      head_gs_bump_range:  0.0050
+      free_gs_offset:      0.0500   # 5cm
+      free_gs_scale:       0.0040   # 4e-3
+      free_gs_residual:    True
+
+      render_method:     3dgs
+      light_method:      Neural_AO_SH2
+  G_ema: G
+  D:
+    type: models.EGG3Dv0.SegDiscriminator
+    args: [59, 512, 3, 128, 3]  # num_condition, res_img, chn_img, res_mask, chn_mask
+    kwargs:
+      num_fp16_res: 6
+      conv_clamp: 256
+      fusion:             mid
+      min_seg_dropout:    0
+      seg_dropout_initp:  0
+      seg_dropout_decay:  0.001
+      seg_scale:          0.25
+      seg_channels_scale: 0.25
+      epilogue_kwargs:
+        mbstd_group_size: 4
+optim:
+  G:
+    type: torch.optim.AdamW
+    kwargs:
+      lr:   0.0025
+      betas: [0.0, 0.99]
+      weight_decay: 0
+      # weight_decay: 0.00000  # 1e-5
+    groups:
+      - regex: "gs_renderer.teeth_xyz$"
+        name:  "teeth_xyz"
+        lr:    0
+      - regex: "gs_renderer.teeth_prm$"
+        name:  "teeth_prm"
+        lr:    0.0005
+      - regex: "gs_renderer.*_xyz$"
+        name:  "free_gs_xyz"
+        lr:    0.0005
+      # - regex: "gs_renderer.field_dec_mlp.*"
+      #   name:  "dec_mlp_shared"
+      #   lr:    0.0005
+      # - regex: "gs_renderer.part_mlp_dict.*"
+      #   name:  "dec_mlp_parted"
+      #   lr:    0.0005
+      - regex: "gs_renderer.*noise_strength$"
+        name:  "noise_strength"
+        weight_decay: 0.00001   # 1e-5
+      - regex: "shading_net.*"
+        name:  "shading_net"
+        lr:    0.0025
+        betas: [0.9, 0.99]
+        # weight_decay: 0.0005   # 1e-5
+      - regex: ".*"
+        name:  "default"
+  D:
+    type: torch.optim.AdamW
+    kwargs:
+      lr:   0.0020
+      betas: [0.0, 0.99]
+      weight_decay: 0  # note AdamW has default non-zero weight decay
+      # weight_decay: 0.0010    # 1e-3
+    groups:
+      - regex: "^sb.*"
+        name:  "mask"
+        weight_decay: 0.0100  # 1e-2
+      - regex: ".*"
+        name:  "default"
+loss:
+  attr:
+    r1_gamma:          [32, 16] # Seg, Img 5*(0.0002*(res**2)/batch)
+    blur_init_sigma:   5
+    blur_fade_kimg:    200
+    tex_symmetric:     0.01
+    tex_smooth:        0.01
+    bump_smooth:       0.05
+    # depth_smooth:      0.1
+    pos_smooth:        1
+    normal_smooth:     0.1
+    img_smooth:        0 # 0.01
+    back_smooth:       0
+    # rot_reg_prob:      0.2
+    # rot_reg_fade_kimg: 1000
+    # t3d_reg_prob:      0.2
+    # t3d_reg_fade_kimg: 1000
+    init_prob:              0.5
+    light_reg_prob:         0.2
+    light_reg_fade_kimg:    1000
+    lightrot_reg_prob:      0.2
+    lightrot_reg_fade_kimg: 1000
+    m2v_reg_prob:           0.2
+    m2v_reg_fade_kimg:      1000
+    id_reg_prob:            0.2
+    id_reg_fade_kimg:       1000
+    exp_reg_prob:           0.2
+    exp_reg_fade_kimg:      1000
+    pose_reg_prob:          0.2
+    pose_reg_fade_kimg:     1000
+    reg_bump:          0.0005
+    reg_triplane:      0.0001
+    reg_scale:         0 # 0.01
+    reg_sorted:        0.0001
+    reg_opacity:       0.1
+    # reg_opacity_beta:  0.01
+    reg_opacity_l2:    0.01
+    reg_normal:        0.1
+    # reg_surface_pull:  0.001
+    # reg_inter_push:    0.0001
+    reg_fs_xyz_init:     5
+    # reg_fs_xyz_init_l2:  30
+    reg_fs_xyz_anchor:   1.5
+    reg_fs_xyz_offset:   1.5
+    # reg_fs_xyz_norm:   0.001
+    styleganxl_loss:   False
+    Greg_method: texture_symmetric
+    D_img_trick: 
+      - stack_seg
+    augment: [ada, adaptive_mask]
+phase:
+  Gmain:
+    sched: null
+  Greg:
+    sched: null
+  Dmain:
+    sched: null
+  Dreg:
+    sched: null
+train:
+  targets: [GAN]
+  # skip_phase: [Dreg]
+  # ema_kimg:   1.25
+  # Dreg_interval: 4
+  ada_target:      0.7
+  rand_condition:  True
+  tv_window_width: 1
+  batch_size:     4
+  total_kimg:     25000 # 2.5M for paramter tuning, 25M for final
+  eval_kimg:      500
+  log_interval:   1000
+  save_interval:  500000
+  deepspeed:      "0"
+  zero_grad_none: True
+  num_workers:    8
